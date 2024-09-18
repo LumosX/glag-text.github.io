@@ -1,0 +1,102 @@
+<html>
+    <style>
+    #container{
+        width: 100%;
+        font-size: 12px;
+        overflow: hidden;
+        background: #ccc
+    }
+    #left {
+        float: left; 
+        width: 33%;
+        height: 100%;
+    }
+    #mid { 
+        float: left;
+        width: 33%;
+        height: 100%;
+    }
+    #right {
+        float: left;
+        width: 33%;
+        height: 100%;
+    }
+    
+    .textbox {
+        width: 100%;
+        height: 100%;
+        font-family: Consolas, monospace;
+    }
+    </style>
+    <body>
+        <div id="left"><textarea class="textbox" id="leftarea" name="leftarea" placeholder="Cyrillic text, type here" ></textarea></div>
+        <div id="mid"><textarea class="textbox" id="midarea" name="midarea" placeholder="Glagolitic text, output only"></textarea></div>
+        <div id="right"><textarea class="textbox" id="rightarea" name="rightarea" placeholder="Transliterated text, output only"></textarea></div>
+    </body>
+    <script>
+        const l = document.querySelector('textarea#leftarea');
+        const m = document.querySelector('textarea#midarea');
+        const r = document.querySelector('textarea#rightarea');
+        l.addEventListener('input', () => onCyrillicTextChanged(l));
+        
+        let lock = null;
+        function onCyrillicTextChanged() {
+            // Update text in all three fields based on which one changed.
+            m.value = r.value = "";
+            const len = l.value.length;
+            for (let i = 0; i < len; i++) {
+                let cyrChar = l.value[i].toUpperCase();
+                // special cases, dzh and dz:
+                if ((cyrChar == "Ж" || cyrChar == "З") && i > 0) {
+                    const prevChar = l.value[i - 1].toUpperCase();
+                    if (table[prevChar + cyrChar]) {
+                        cyrChar = prevChar + cyrChar;
+                        // Remove single letters, now obsolete, from the outputs
+                        m.value = m.value.slice(0, -1);
+                        r.value = r.value.slice(0, -1);
+                    }
+                }
+                const vals = table[cyrChar];
+                m.value += vals ? Object.keys(vals)[0] : cyrChar;
+                r.value += vals ? Object.values(vals)[0].trim() : cyrChar;
+            }
+        }
+        
+        
+        const table = {
+            "А": { "Ⰰ" : "a" },
+            "Б": { "Ⰱ" : "b" },
+            "В": { "Ⰲ" : "v" },
+            "Г": { "Ⰳ" : "g" },
+            "Д": { "Ⰴ" : "d" },
+            "Е": { "Ⰵ" : "ɛ" },
+            "Ж": { "Ⰶ" : "ʒ" },
+            "З": { "Ⰸ" : "z" },
+            "ДЖ": { "Ⰼ" : "d͡ʒ" },
+            "ДЗ": { "Ⰷ" : "d͡z" },
+            "И": { "Ⰻ" : "i" },
+            "Й": { "Ⰹ" : "j" },
+            "К": { "Ⰽ" : "k" },
+            "Л": { "Ⰾ" : "l" },
+            "М": { "Ⰿ" : "m" },
+            "Н": { "Ⱀ" : "n" },
+            "О": { "Ⱁ" : "o" },
+            "П": { "Ⱂ" : "p" },
+            "Р": { "Ⱃ" : "r" },
+            "С": { "Ⱄ" : "s" },
+            "Т": { "Ⱅ" : "t" },
+            "У": { "Ⱆ" : "u" },
+            "Ф": { "Ⱇ" : "f" },
+            "Х": { "Ⱈ" : "x" },
+            "Ц": { "Ⱌ" : "t͡s" },
+            "Ч": { "Ⱍ" : "t͡ʃ" },
+            "Ш": { "Ⱎ" : "ʃ" },
+            "Щ": { "Ⱋ" : "ʃ͡t" },
+            "Ъ": { "Ⱏ" : "ɤ" },
+            "Ь": { "Ⱐ" : "ʲ" },
+            "Ю": { "Ⱓ" : "ju" },
+            "Я": { "Ⱑ" : "ja" },
+        };
+    
+    </script>
+</html>

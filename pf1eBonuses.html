@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pathfinder 1e Fractional Base Bonuses Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .class-entry {
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .class-inputs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-bottom: 5px;
+        }
+
+        input,
+        select {
+            padding: 5px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            font-size: 1.2em;
+            border: none;
+            border-bottom: 1px solid #ddd;
+        }
+
+        input[type="text"]::placeholder {
+            color: #aaa;
+        }
+
+        button {
+            padding: 5px 10px;
+            margin-top: 10px;
+        }
+
+        .remove-class-button {
+            margin-top: 0px;
+            margin-left: 10px;
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            text-align: center;
+            cursor: pointer;
+            padding: 0;
+            font-size: 16px;
+        }
+
+        .container {
+            margin-bottom: 10px;
+            display: flex;
+            width: 100%;
+            align-items: center;
+        }
+
+        #results {
+            margin-top: 20px;
+            background-color: #e9e9e9;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .note {
+            font-size: 0.9em;
+            font-style: italic;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .save-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-left: 5px;
+        }
+
+        mark.good {
+            background-color: #1eccff;
+        }
+
+        mark.poor {
+            background-color: #ff4635;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Pathfinder 1e Fractional Base Bonuses Calculator</h1>
+    <div id="classes"></div>
+    <button onclick="addClass()">Add Class</button>
+    <div id="results"></div>
+
+    <script>
+        const BAB = {
+            GOOD: 'good',
+            MEDIUM: 'medium',
+            POOR: 'poor'
+        };
+
+        let classData = [];
+
+        function addClass() {
+            const newClass = {
+                id: Date.now(),
+                name: '',
+                levels: 1,
+                bab: BAB.GOOD,
+                fortitude: true,
+                reflex: true,
+                will: false
+            };
+            classData.push(newClass);
+            renderClasses();
+            calculateBonuses();
+        }
+
+        function removeClass(id) {
+            classData = classData.filter(c => c.id !== id);
+            renderClasses();
+            calculateBonuses();
+        }
+
+        function renderClasses() {
+            const classesContainer = document.getElementById('classes');
+            classesContainer.innerHTML = '';
+            classData.forEach(classItem => {
+                function getIndicator(value) {
+                    const prop = boolToBab(classItem[value]);
+                    const targetClass = prop === BAB.MEDIUM ? "" : " " + prop;
+                    return `<mark id="dot-${value}${classItem.id}" class="save-indicator${targetClass}"></mark>`;
+                }
+                const classDiv = document.createElement('div');
+                classDiv.className = 'class-entry';
+                classDiv.innerHTML = `
+                    <div class="container">
+                        <input type="text" value="${classItem.name}" placeholder="Class Name" oninput="updateClass(${classItem.id}, 'name', this.value)">
+                        <button class="remove-class-button" onclick="removeClass(${classItem.id})">×</button>
+                    </div>
+                    <div class="class-inputs">
+                        <div class="input-group">
+                            <label for="levels${classItem.id}">Levels</label>
+                            <input type="number" id="levels${classItem.id}" min="1" value="${classItem.levels}" oninput="updateClass(${classItem.id}, 'levels', this.value)">
+                        </div>
+                        <div class="input-group">
+                            <label for="bab${classItem.id}">BAB ${getIndicator("bab")}</label>
+                            <select id="bab${classItem.id}" onchange="updateClass(${classItem.id}, 'bab', this.value)">
+                                <option value="${BAB.GOOD}" ${classItem.bab === BAB.GOOD ? 'selected' : ''}>Good (+1)</option>
+                                <option value="${BAB.MEDIUM}" ${classItem.bab === BAB.MEDIUM ? 'selected' : ''}>Medium (+3/4)</option>
+                                <option value="${BAB.POOR}" ${classItem.bab === BAB.POOR ? 'selected' : ''}>Poor (+1/2)</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="fortitude${classItem.id}">Fortitude ${getIndicator("fortitude")}</label>
+                            <select id="fortitude${classItem.id}" onchange="updateClass(${classItem.id}, 'fortitude', this.value)">
+                                <option value="true" ${classItem.fortitude ? 'selected' : ''}>Good (+1/2)</option>
+                                <option value="false" ${!classItem.fortitude ? 'selected' : ''}>Poor (+1/3)</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="reflex${classItem.id}">Reflex ${getIndicator("reflex")}</label>
+                            <select id="reflex${classItem.id}" onchange="updateClass(${classItem.id}, 'reflex', this.value)">
+                                <option value="true" ${classItem.reflex ? 'selected' : ''}>Good (+1/2)</option>
+                                <option value="false" ${!classItem.reflex ? 'selected' : ''}>Poor (+1/3)</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="will${classItem.id}">Will ${getIndicator("will")}</label>
+                            <select id="will${classItem.id}" onchange="updateClass(${classItem.id}, 'will', this.value)">
+                                <option value="true" ${classItem.will ? 'selected' : ''}>Good (+1/2)</option>
+                                <option value="false" ${!classItem.will ? 'selected' : ''}>Poor (+1/3)</option>
+                            </select>
+                        </div>
+                    </div>
+                `;
+                classesContainer.appendChild(classDiv);
+            });
+        }
+
+        function boolToBab(value) {
+            return value === true ? BAB.GOOD : value === false ? BAB.POOR : value;
+        }
+
+        function updateClass(id, field, value) {
+            const classIndex = classData.findIndex(c => c.id === id);
+            if (classIndex !== -1) {
+                if (field === 'levels') {
+                    value = parseInt(value);
+                } else if (['fortitude', 'reflex', 'will'].includes(field)) {
+                    value = value === 'true';
+                }
+                classData[classIndex][field] = value;
+
+                if (['bab', 'fortitude', 'reflex', 'will'].includes(field)) {
+                    const indicator = document.getElementById(`dot-${field}${id}`);
+                    if (indicator) {
+                        console.log("yes indicator for " + field + "; value is = " + value + "; " + (value === BAB.GOOD))
+                        const lol = boolToBab(value);
+                        const f = "save-indicator" + (lol === BAB.MEDIUM ? "" : " " + lol);
+                        indicator.className = f;
+                        console.log(f);
+                    } 
+                }
+                calculateBonuses();
+            }
+        }
+
+        function calculateBonuses() {
+            let totalLevels = 0;
+            let bab = 0;
+            let fortitude = 0;
+            let reflex = 0;
+            let will = 0;
+            let fortitudeGood = false;
+            let reflexGood = false;
+            let willGood = false;
+
+            classData.forEach(classItem => {
+                totalLevels += classItem.levels;
+
+                switch (classItem.bab) {
+                    case BAB.GOOD:
+                        bab += classItem.levels;
+                        break;
+                    case BAB.MEDIUM:
+                        bab += classItem.levels * 0.75;
+                        break;
+                    case BAB.POOR:
+                        bab += classItem.levels * 0.5;
+                        break;
+                }
+
+                fortitude += classItem.levels * (classItem.fortitude ? 0.5 : 1 / 3);
+                reflex += classItem.levels * (classItem.reflex ? 0.5 : 1 / 3);
+                will += classItem.levels * (classItem.will ? 0.5 : 1 / 3);
+
+                if (classItem.fortitude) fortitudeGood = true;
+                if (classItem.reflex) reflexGood = true;
+                if (classItem.will) willGood = true;
+            });
+
+            const roundedBab = Math.floor(bab);
+            const roundedFortitude = Math.floor(fortitude) + (fortitudeGood ? 2 : 0);
+            const roundedReflex = Math.floor(reflex) + (reflexGood ? 2 : 0);
+            const roundedWill = Math.floor(will) + (willGood ? 2 : 0);
+
+            const babString = `+${roundedBab}` + (roundedBab >= 6 ? `/+${roundedBab - 5}` : '') + (roundedBab >= 11 ? `/+${roundedBab - 10}` : '') + (roundedBab >= 16 ? `/+${roundedBab - 15}` : '');
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <p><strong>Total Levels:</strong> ${totalLevels}</p>
+                <p><strong>Base Attack Bonus:</strong> ${babString}</p>
+                <p><strong>Saving Throws:</strong> Fort +${roundedFortitude}, Ref +${roundedReflex}, Will +${roundedWill}</p>
+                <p><strong>Fractional Bonuses:</strong> BAB +${formatFraction(bab)}, Fort +${formatFraction(fortitude)}, Ref +${formatFraction(reflex)}, Will +${formatFraction(will)}</p>
+                <p class="note">The fractional bonuses exclude any +2 bonuses to good saves.</p>
+            `;
+            saveToURL();
+        }
+
+        function formatFraction(value) {
+            const wholePart = Math.floor(value);
+            const fractionalPart = value - wholePart;
+
+            let result = 0;
+            if (fractionalPart === 0) {
+                return wholePart.toString();
+            } else if (Math.abs(fractionalPart - 3/4) < 0.001) {
+                result = `${wholePart}-3/4`;
+            } else if (Math.abs(fractionalPart - 1/3) < 0.001) {
+                result = `${wholePart}-1/3`;
+            } else if (Math.abs(fractionalPart - 2/3) < 0.001) {
+                result = `${wholePart}-2/3`;
+            } else if (Math.abs(fractionalPart - 1/2) < 0.001) {
+                result = `${wholePart}-1/2`;
+            } else {
+                result = value.toFixed();
+            }
+            return result.replace("0-", "");
+        }
+
+        function serialiseClassData() {
+            return classData.map(cls => {
+                const babValue = cls.bab === BAB.GOOD ? '1' : cls.bab === BAB.MEDIUM ? '2' : '3';
+                const saves = `${cls.fortitude ? '1' : '0'}${cls.reflex ? '1' : '0'}${cls.will ? '1' : '0'}`;
+                return `${encodeURIComponent(cls.name)}-${cls.levels}-${babValue}${saves}`;
+            }).join(';');
+        }
+
+        function saveToURL() {
+            const serialised = serialiseClassData();
+            const newURL = `${window.location.pathname}?c=${serialised}`;
+            window.history.replaceState({path: newURL}, '', newURL);
+        }
+
+        function loadFromURL() {
+            const classesParam = new URLSearchParams(window.location.search).get('c');
+            if (classesParam) {
+                classData = deserialiseClassData(classesParam);
+                renderClasses();
+                calculateBonuses();
+            }
+        }
+
+        // Deserialise class data from query string
+        function deserialiseClassData(queryString) {
+            if (!queryString) return [];
+
+            return queryString.split(';').map((classString, i) => {
+                const [name, levels, props] = classString.split('-');
+                const bab = props[0] === '1' ? BAB.GOOD : props[0] === '2' ? BAB.MEDIUM : BAB.POOR;
+                return {
+                    id: i,
+                    name: decodeURIComponent(name),
+                    levels: parseInt(levels, 10),
+                    bab: bab,
+                    fortitude: props[1] === '1',
+                    reflex: props[2] === '1',
+                    will: props[3] === '1'
+                };
+            });
+        }
+
+        function initialiseFromURL() {
+            loadFromURL();
+            if (classData.length === 0) {
+                addClass();
+            }
+            renderClasses();
+            calculateBonuses();
+        }
+
+        // Don't forget to call initialiseFromURL when the page loads
+        window.addEventListener('load', initialiseFromURL)
+    </script>
+</body>
+
+</html>
