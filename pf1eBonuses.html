@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pathfinder 1e Fractional Base Bonuses Calculator</title>
+    <title>Pathfinder 1e Base Bonus Calculator</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -119,7 +119,7 @@
 </head>
 
 <body>
-    <h1>Pathfinder 1e Fractional Base Bonuses Calculator</h1>
+    <h1>Pathfinder 1e Base Bonus Calculator</h1>
     <div id="classes"></div>
     <button onclick="addClass()">Add Class</button>
     <div id="results"></div>
@@ -139,8 +139,8 @@
                 name: '',
                 levels: 1,
                 bab: BAB.GOOD,
-                fortitude: true,
-                reflex: true,
+                fort: true,
+                ref: true,
                 will: false
             };
             classData.push(newClass);
@@ -184,17 +184,17 @@
                             </select>
                         </div>
                         <div class="input-group">
-                            <label for="fortitude${classItem.id}">Fortitude ${getIndicator("fortitude")}</label>
-                            <select id="fortitude${classItem.id}" onchange="updateClass(${classItem.id}, 'fortitude', this.value)">
-                                <option value="true" ${classItem.fortitude ? 'selected' : ''}>Good (+1/2)</option>
-                                <option value="false" ${!classItem.fortitude ? 'selected' : ''}>Poor (+1/3)</option>
+                            <label for="fort${classItem.id}">Fortitude ${getIndicator("fort")}</label>
+                            <select id="fort${classItem.id}" onchange="updateClass(${classItem.id}, 'fort', this.value)">
+                                <option value="true" ${classItem.fort ? 'selected' : ''}>Good (+1/2)</option>
+                                <option value="false" ${!classItem.fort ? 'selected' : ''}>Poor (+1/3)</option>
                             </select>
                         </div>
                         <div class="input-group">
-                            <label for="reflex${classItem.id}">Reflex ${getIndicator("reflex")}</label>
-                            <select id="reflex${classItem.id}" onchange="updateClass(${classItem.id}, 'reflex', this.value)">
-                                <option value="true" ${classItem.reflex ? 'selected' : ''}>Good (+1/2)</option>
-                                <option value="false" ${!classItem.reflex ? 'selected' : ''}>Poor (+1/3)</option>
+                            <label for="ref${classItem.id}">Reflex ${getIndicator("ref")}</label>
+                            <select id="ref${classItem.id}" onchange="updateClass(${classItem.id}, 'ref', this.value)">
+                                <option value="true" ${classItem.ref ? 'selected' : ''}>Good (+1/2)</option>
+                                <option value="false" ${!classItem.ref ? 'selected' : ''}>Poor (+1/3)</option>
                             </select>
                         </div>
                         <div class="input-group">
@@ -219,19 +219,16 @@
             if (classIndex !== -1) {
                 if (field === 'levels') {
                     value = parseInt(value);
-                } else if (['fortitude', 'reflex', 'will'].includes(field)) {
+                } else if (['fort', 'ref', 'will'].includes(field)) {
                     value = value === 'true';
                 }
                 classData[classIndex][field] = value;
 
-                if (['bab', 'fortitude', 'reflex', 'will'].includes(field)) {
+                if (['bab', 'fort', 'ref', 'will'].includes(field)) {
                     const indicator = document.getElementById(`dot-${field}${id}`);
                     if (indicator) {
-                        console.log("yes indicator for " + field + "; value is = " + value + "; " + (value === BAB.GOOD))
-                        const lol = boolToBab(value);
-                        const f = "save-indicator" + (lol === BAB.MEDIUM ? "" : " " + lol);
-                        indicator.className = f;
-                        console.log(f);
+                        const asBab = boolToBab(value);
+                        indicator.className = "save-indicator" + (asBab === BAB.MEDIUM ? "" : " " + asBab);
                     } 
                 }
                 calculateBonuses();
@@ -241,51 +238,69 @@
         function calculateBonuses() {
             let totalLevels = 0;
             let bab = 0;
-            let fortitude = 0;
-            let reflex = 0;
-            let will = 0;
-            let fortitudeGood = false;
-            let reflexGood = false;
-            let willGood = false;
+            let fracBab = 0;
+            let standard = {
+                "fort": 0,
+                "ref": 0,
+                "will": 0
+            }
+            let frac = {
+                "fort": 0,
+                "ref": 0,
+                "will": 0
+            }
+            let goodMods = {
+                "fort": 0,
+                "ref": 0,
+                "will": 0
+            }
 
             classData.forEach(classItem => {
                 totalLevels += classItem.levels;
 
-                switch (classItem.bab) {
-                    case BAB.GOOD:
-                        bab += classItem.levels;
-                        break;
-                    case BAB.MEDIUM:
-                        bab += classItem.levels * 0.75;
-                        break;
-                    case BAB.POOR:
-                        bab += classItem.levels * 0.5;
-                        break;
-                }
-
-                fortitude += classItem.levels * (classItem.fortitude ? 0.5 : 1 / 3);
-                reflex += classItem.levels * (classItem.reflex ? 0.5 : 1 / 3);
-                will += classItem.levels * (classItem.will ? 0.5 : 1 / 3);
-
-                if (classItem.fortitude) fortitudeGood = true;
-                if (classItem.reflex) reflexGood = true;
-                if (classItem.will) willGood = true;
+                const babMod = classItem.levels * (classItem.bab === BAB.GOOD 
+                    ? 1 
+                    : classItem.BAB === BAB.MEDIUM ? 0.75 : 0.5);
+                bab += Math.floor(babMod);
+                fracBab += babMod;
+                
+                ['fort', 'ref', 'will'].forEach(val => {
+                    const mod = classItem.levels * (classItem[val] ? 0.5 : 1/3);
+                    
+                    standard[val] += Math.floor(mod);
+                    frac[val] += mod;
+                    
+                    if (classItem.levels > 0 && classItem[val]) goodMods[val] += 2;
+                });
             });
-
-            const roundedBab = Math.floor(bab);
-            const roundedFortitude = Math.floor(fortitude) + (fortitudeGood ? 2 : 0);
-            const roundedReflex = Math.floor(reflex) + (reflexGood ? 2 : 0);
-            const roundedWill = Math.floor(will) + (willGood ? 2 : 0);
-
-            const babString = `+${roundedBab}` + (roundedBab >= 6 ? `/+${roundedBab - 5}` : '') + (roundedBab >= 11 ? `/+${roundedBab - 10}` : '') + (roundedBab >= 16 ? `/+${roundedBab - 15}` : '');
+            
+            function getBabString(babVal) {
+                return `+${babVal}` + (babVal >= 6 ? `/+${babVal - 5}` : '') + (babVal >= 11 ? `/+${babVal - 10}` : '') + (babVal >= 16 ? `/+${babVal - 15}` : '');
+            }
+            
+            // Standard bonuses: add all good +2 mods to totals
+            const standardFort = standard.fort + goodMods.fort;
+            const standardRef = standard.ref + goodMods.ref;
+            const standardWill = standard.will + goodMods.will;
+            
+            // Fractionals: round final totals down, add good +2 mods only once
+            const fracBabString = getBabString(Math.floor(fracBab));
+            const fracFort = Math.floor(frac.fort) + (goodMods.fort > 0 ? 2 : 0);
+            const fracRef = Math.floor(frac.ref) + (goodMods.ref > 0 ? 2 : 0);
+            const fracWill = Math.floor(frac.will) + (goodMods.will > 0 ? 2 : 0);
 
             const resultsDiv = document.getElementById('results');
             resultsDiv.innerHTML = `
                 <p><strong>Total Levels:</strong> ${totalLevels}</p>
-                <p><strong>Base Attack Bonus:</strong> ${babString}</p>
-                <p><strong>Saving Throws:</strong> Fort +${roundedFortitude}, Ref +${roundedReflex}, Will +${roundedWill}</p>
-                <p><strong>Fractional Bonuses:</strong> BAB +${formatFraction(bab)}, Fort +${formatFraction(fortitude)}, Ref +${formatFraction(reflex)}, Will +${formatFraction(will)}</p>
-                <p class="note">The fractional bonuses exclude any +2 bonuses to good saves.</p>
+                <hr>
+                <p><strong>Base Attack Bonus:</strong> ${getBabString(bab)}</p>
+                <p><strong>Saving Throws:</strong> Fort +${standardFort}, Ref +${standardRef}, Will +${standardWill}</p>
+                <hr>
+                <p><strong>Fractional BAB:</strong> ${fracBabString}</p>
+                <p><strong>Fractional Saving Throws:</strong> Fort +${fracFort}, Ref +${fracRef}, Will +${fracWill}</p>
+                <p><strong>Accumulated Fractions:</strong> BAB +${formatFraction(fracBab)}, Fort +${formatFraction(frac.fort)}, Ref +${formatFraction(frac.ref)}, Will +${formatFraction(frac.  will)}</p>
+                <p class="note">Fractional bonuses are calculated using the <a href=https://www.aonprd.com/Rules.aspx?ID=1726">optional rules</a>, and only apply the +2 bonus to a good save once.</p>
+                <p class="note">The "accumulated fractions" line excludes any initial +2 bonuses to good saving throws, as if you were looking at the table for fractional base bonuses.</p>
             `;
             saveToURL();
         }
@@ -314,7 +329,7 @@
         function serialiseClassData() {
             return classData.map(cls => {
                 const babValue = cls.bab === BAB.GOOD ? '1' : cls.bab === BAB.MEDIUM ? '2' : '3';
-                const saves = `${cls.fortitude ? '1' : '0'}${cls.reflex ? '1' : '0'}${cls.will ? '1' : '0'}`;
+                const saves = `${cls.fort ? '1' : '0'}${cls.ref ? '1' : '0'}${cls.will ? '1' : '0'}`;
                 return `${encodeURIComponent(cls.name)}-${cls.levels}-${babValue}${saves}`;
             }).join(';');
         }
@@ -346,8 +361,8 @@
                     name: decodeURIComponent(name),
                     levels: parseInt(levels, 10),
                     bab: bab,
-                    fortitude: props[1] === '1',
-                    reflex: props[2] === '1',
+                    fort: props[1] === '1',
+                    ref: props[2] === '1',
                     will: props[3] === '1'
                 };
             });
